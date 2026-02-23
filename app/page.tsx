@@ -59,7 +59,7 @@ export default function Loja() {
       {/* HEADER AZUL MARINHO */}
       <nav className="bg-[#2D3E77] text-white sticky top-0 z-50 py-4 px-6 shadow-xl">
         <div className="max-w-[1600px] mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-black tracking-[0.2em]">YGO<span className="text-slate-400 font-light">STOCK</span></h1>
+          <h1 className="text-xl font-black tracking-[0.2em]">YGO<span className="text-slate-400 font-light">STORE</span></h1>
           
           <div className="flex-1 max-w-lg mx-8 relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={16} />
