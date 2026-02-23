@@ -22,7 +22,13 @@ export default function AdminPage() {
 
   // Dados do formulário (incluindo Condition)
   const [newCard, setNewCard] = useState({
-    name: '', rarity: 'Secret Rare', condition: 'Near Mint', lang: 'PT', image_url: '', is_active: true
+    name: '',
+    rarity: 'Secret Rare', 
+    condition: 'Near Mint',
+    lang: 'PT',
+    image_url: '',
+    is_active: true,
+    stock: 1
   });
 
   useEffect(() => {
@@ -68,6 +74,14 @@ export default function AdminPage() {
       else fetchCartas();
     }
   };
+
+    // 2. Nova função para atualizar o estoque rapidamente (+ ou -)
+  const updateStock = async (id: number, newQuantity: number) => {
+    if (newQuantity < 0) return; // Não permite estoque negativo
+    const { error } = await supabase.from('cartas').update({ stock: newQuantity }).eq('id', id);
+    if (!error) fetchCartas();
+  };
+
 
   const toggleActive = async (id: number, currentStatus: boolean) => {
     await supabase.from('cartas').update({ is_active: !currentStatus }).eq('id', id);
@@ -186,6 +200,15 @@ export default function AdminPage() {
               </select>
             </div>
 
+            <div>
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Qtd em Estoque</label>
+              <input 
+                type="number" min="0"
+                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-sm text-xs font-bold text-black outline-[#2D3E77]"
+                value={newCard.stock} onChange={e => setNewCard({...newCard, stock: parseInt(e.target.value)})}
+                />
+            </div>
+
             <button className="md:col-span-3 bg-[#2D3E77] text-white py-4 rounded-sm font-black text-[10px] tracking-[0.3em] hover:bg-black transition-all shadow-lg uppercase">
               Confirmar Cadastro no Sistema
             </button>
@@ -205,6 +228,7 @@ export default function AdminPage() {
                 <tr className="bg-white text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                   <th className="p-6">Card</th>
                   <th className="p-6">Raridade | Estado</th>
+                  <th className="p-6">Estoque</th>
                   <th className="p-6">Status</th>
                   <th className="p-6 text-right">Ações</th>
                 </tr>
@@ -222,6 +246,19 @@ export default function AdminPage() {
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-bold text-[#2D3E77]">{item.rarity}</span>
                         <span className="text-[9px] text-slate-400 font-bold uppercase">{item.condition} | {item.lang}</span>
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => updateStock(item.id, item.stock - 1)}
+                          className="w-6 h-6 flex items-center justify-center border border-slate-200 hover:bg-slate-100 text-black font-bold"
+                        > - </button>
+                        <span className="text-xs font-black w-4 text-center">{item.stock}</span>
+                        <button 
+                          onClick={() => updateStock(item.id, item.stock + 1)}
+                          className="w-6 h-6 flex items-center justify-center bg-[#2D3E77] text-white font-bold"
+                        > + </button>
                       </div>
                     </td>
                     <td className="p-6">
