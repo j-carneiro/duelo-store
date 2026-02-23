@@ -33,7 +33,7 @@ export default function Loja() {
   }, []);
 
   const handleWhatsApp = () => {
-    const fone = "5511999999999";
+    const fone = "5511998792205";
     let texto = "🔥 *PEDIDO YGO STOCK* 🔥\n\n";
     cart.forEach(item => texto += `• ${item.name} (${item.rarity} | ${item.condition})\n`);
     window.open(`https://wa.me/${fone}?text=${encodeURIComponent(texto)}`);
