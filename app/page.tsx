@@ -34,7 +34,7 @@ export default function Loja() {
 
   const handleWhatsApp = () => {
     const fone = "5511998792205";
-    let texto = "🔥 *PEDIDO YGO STOCK* 🔥\n\n";
+    let texto = "🔥 *PEDIDO YGO STORE* 🔥\n\n";
     cart.forEach(item => texto += `• ${item.name} (${item.rarity} | ${item.condition})\n`);
     window.open(`https://wa.me/${fone}?text=${encodeURIComponent(texto)}`);
   };
@@ -80,7 +80,7 @@ export default function Loja() {
       </nav>
 
       <main className="max-w-[1600px] mx-auto p-6 lg:p-10">
-        
+
         {/* FILTROS HORIZONTAIS */}
         <div className="flex items-center gap-8 mb-8 pb-4 border-b border-slate-300">
           <div className="flex items-center gap-2 text-[#2D3E77]/50 uppercase font-black text-[10px] tracking-widest">
@@ -137,14 +137,30 @@ export default function Loja() {
                   </div>
 
                   {/* 3. BOTÃO DE ADD TO CART */}
-                  <button 
-                    onClick={() => setCart([...cart, {...card, cartId: Math.random()}])}
-                    className="mt-auto w-full bg-[#2D3E77] text-white py-2.5 rounded-sm text-[10px] font-black uppercase tracking-[0.1em] hover:bg-black transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Plus size={14} /> Adicionar
-                  </button>
+                    <button 
+                      disabled={card.stock <= 0} // DESATIVA SE NÃO TIVER ESTOQUE
+                      onClick={() => setCart([...cart, {...card, cartId: Math.random()}])}
+                      className={`mt-auto w-full py-2.5 rounded-sm text-[10px] font-black uppercase tracking-[0.1em] transition-colors flex items-center justify-center gap-2 ${
+                        card.stock > 0 
+                        ? 'bg-[#2D3E77] text-white hover:bg-black' 
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {card.stock > 0 ? (
+                        <><Plus size={14} /> Adicionar</>
+                      ) : (
+                        'Esgotado'
+                      )}
+                    </button>
+  
+                        {/* Opcional: Mostrar a quantidade disponível */}
+                        {card.stock > 0 && card.stock <= 3 && (
+                          <p className="text-[8px] text-red-500 font-bold mt-2 text-center uppercase tracking-widest animate-pulse">
+                            Resta(m) apenas {card.stock}!
+                          </p>
+                        )}
+                  </div>
                 </div>
-              </div>
             ))}
           </section>
 
