@@ -177,6 +177,7 @@ export default function AdminPage() {
                 <option value="Starlight Rare">Starlight Rare</option>
                 <option value="Collector's Rare">Collector's Rare</option>
                 <option value="Common">Common</option>
+                <option value="Rare">Rare</option>
               </select>
             </div>
 
