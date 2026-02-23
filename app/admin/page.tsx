@@ -61,7 +61,13 @@ export default function AdminPage() {
     const { error } = await supabase.from('cartas').insert([newCard]);
     if (error) alert(error.message);
     else {
-      setNewCard({ name: '', rarity: 'Secret Rare', condition: 'Near Mint', lang: 'PT', image_url: '', is_active: true });
+      setNewCard({ name: '',
+        rarity: 'Secret Rare', 
+        condition: 'Near Mint',
+        lang: 'PT',
+        image_url: '',
+        is_active: true,
+      stock: 1 });
       fetchCartas();
     }
   };
