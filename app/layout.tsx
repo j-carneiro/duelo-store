@@ -4,8 +4,8 @@ import { Providers } from "@/components/providers";
 
 // Metadados que aparecem na aba do navegador
 export const metadata: Metadata = {
-  title: "YGO STOCK | Loja Profissional",
-  description: "Sua vitrine de cards de Yu-Gi-Oh! com checkout via WhatsApp",
+  title: "Duelo CardStore | Sua Loja de Cards",
+  description: "Acervo de cards de Yu-Gi-Oh! Checkout via WhatsApp",
 };
 
 export default function RootLayout({

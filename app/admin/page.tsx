@@ -113,7 +113,9 @@ export default function AdminPage() {
       <nav className="bg-[#1E1E1E] text-white py-4 px-8 mb-10 border-b border-white/5 shadow-2xl">
         <div className="max-w-[1400px] mx-auto flex justify-between items-center">
           <div className="flex items-center gap-8">
-            <h1 className="text-lg font-black tracking-[0.3em]">YGO<span className="text-[#CD7F32] italic tracking-tighter ml-1">ADMIN</span></h1>
+            <Link href="/">
+              <img src="/logo.svg" alt="Duelo Store" className="h-10 w-auto opacity-90" />
+            </Link>
             <Link href="/" className="flex items-center gap-2 text-[10px] font-black tracking-widest text-white/30 hover:text-[#CD7F32] transition-all uppercase">
               <Home size={14}/> Voltar ao site
             </Link>
