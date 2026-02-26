@@ -63,7 +63,7 @@ export default function Loja() {
   };
 
   const handleWhatsApp = () => {
-    const fone = "5511999999999";
+    const fone = "5511998792205";
     let total = 0;
     let texto = "🟠 *PEDIDO DUELO STORE* 🟠\n\n";
     const agrupado: any = {};
