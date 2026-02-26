@@ -110,22 +110,18 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#121212] text-gray-200 font-sans pb-20 selection:bg-[#CD7F32]">
       {/* NAV ADM */}
-      <nav className="bg-[#1E1E1E] text-white py-4 px-8 mb-10 border-b border-white/5 shadow-2xl">
+      <nav className="bg-[#CD7F32] dark:bg-[#1E1E1E] py-3 px-8 mb-10 shadow-2xl transition-colors duration-500">
         <div className="max-w-[1400px] mx-auto flex justify-between items-center">
           <div className="flex items-center gap-8">
             <Link href="/">
-              <img src="/logo.svg" alt="Duelo Store" className="h-10 w-auto opacity-90" />
+              <img 
+                src="/logo.svg" 
+                alt="Duelo Store" 
+                className="h-8 w-auto transition-all duration-300 brightness-0 invert dark:brightness-100 dark:invert-0" 
+              />
             </Link>
-            <Link href="/" className="flex items-center gap-2 text-[10px] font-black tracking-widest text-white/30 hover:text-[#CD7F32] transition-all uppercase">
-              <Home size={14}/> Voltar ao site
-            </Link>
+            {/* ... restante do nav do admin ... */}
           </div>
-          <button 
-            onClick={() => supabase.auth.signOut().then(() => setIsLoggedIn(false))}
-            className="text-[9px] font-black tracking-widest text-red-500 hover:text-red-400 flex items-center gap-2 uppercase"
-          >
-            <LogOut size={16}/> Sair
-          </button>
         </div>
       </nav>
 

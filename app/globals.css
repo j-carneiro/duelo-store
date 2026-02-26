@@ -1,21 +1,28 @@
 @import "tailwindcss";
 
-html, body {
-  margin: 0;
-  padding: 0;
-  background-color: #121212; /* Grafite Profundo */
-  color: #E5E7EB; /* Cinza Gelo para leitura */
+/* Isso aqui é o que faz o dark:bg-xxx funcionar no v4 com a classe do next-themes */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-cobre: #CD7F32;
+  --color-grafite-bg: #121212;
+  --color-grafite-card: #1E1E1E;
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* Forçamos o comportamento básico do tema */
+@layer base {
+  *, ::after, ::before {
+    @apply border-slate-200 dark:border-white/5;
+  }
+  
+  body {
+    @apply bg-[#F8FAFC] text-slate-900 transition-colors duration-300;
+  }
+
+  .dark body {
+    @apply bg-[#121212] text-gray-200;
+  }
 }
 
-/* Transição suave para interações */
-* {
-  transition: all 0.2s ease-in-out;
-}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
