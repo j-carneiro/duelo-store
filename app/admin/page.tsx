@@ -210,7 +210,7 @@ export default function AdminPage() {
               >
                 <option value="Secret Rare">Secret Rare</option>
                 <option value="Ultra Rare">Ultra Rare</option>
-                <option value="Super Rare">Ultra Rare</option>
+                <option value="Super Rare">Super Rare</option>
                 <option value="Ultimate Rare">Ultimate Rare</option>
                 <option value="Common">Common</option>
               </select>
