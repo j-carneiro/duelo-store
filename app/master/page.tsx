@@ -18,7 +18,71 @@ export default function MasterDashboard() {
     setMounted(true);
   }, []);
 
-  // 2. BUSCA DE DADOS MASTER
+  // 2. PROTEÇÃO DA PÁGINA CONTRA INVASORES
+  useEffect(() => {
+  async function checkMasterAccess() {
+    if (!mounted) return;
+    setLoading(true);
+
+    try {
+      // 1. Pega o usuário logado no Auth
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location.href = "/admin"; // Se não tá logado, manda pro login
+        return;
+      }
+
+      // 2. Busca o campo is_admin na tabela de perfis
+      const { data: perfil, error } = await supabase
+        .from('perfis')
+        .select('is_admin')
+        .eq('id', user.id)
+        .single();
+
+      // 3. A TRAVA REAL: Se não for admin ou der erro, expulsa!
+      if (error || !perfil?.is_admin) {
+        alert("ACESSO NEGADO: Você não possui privilégios de Master Admin.");
+        window.location.href = "/"; 
+        return;
+      }
+
+      // 4. Se chegou aqui, ele É ADMIN. Vamos buscar os dados do relatório:
+      const { data: logsData } = await supabase
+        .from('checkouts')
+        .select('*, vendedor:vendedor_id(nome_loja, cidade)')
+        .order('created_at', { ascending: false });
+
+      if (logsData) {
+        setLogs(logsData);
+        const money = logsData.reduce((acc, curr) => acc + curr.valor_total, 0);
+        setStats(prev => ({ ...prev, totalMoney: money, totalOrders: logsData.length }));
+
+        const counts: any = {};
+        logsData.forEach(log => {
+          const nome = log.vendedor?.nome_loja || 'Vendedor Desconhecido';
+          counts[nome] = (counts[nome] || 0) + log.valor_total;
+        });
+        const rankingArray = Object.entries(counts)
+          .map(([name, value]) => ({ name, value: value as number }))
+          .sort((a, b) => b.value - a.value);
+        setRanking(rankingArray);
+      }
+
+      const { count } = await supabase.from('perfis').select('*', { count: 'exact', head: true });
+      setStats(prev => ({ ...prev, totalSellers: count || 0 }));
+
+    } catch (e) {
+      console.error("Erro crítico:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  checkMasterAccess();
+}, [mounted]);
+
+  // 3. BUSCA DE DADOS MASTER
   useEffect(() => {
     async function fetchMasterData() {
       if (!mounted) return;

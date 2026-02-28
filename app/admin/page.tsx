@@ -167,7 +167,9 @@ export default function AdminPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-[#121212] p-4">
         <div className="bg-white dark:bg-[#1E1E1E] p-10 rounded-sm shadow-2xl w-full max-w-md border border-slate-200 dark:border-white/5">
           <div className="flex justify-center mb-8">
-            <img src="/logo.svg" alt="Duelo Store" className="h-12 w-auto brightness-0 dark:brightness-100" />
+            <a href='/'>
+              <img src="/logo.svg" alt="Duelo Store" className="h-12 w-auto brightness-0 dark:brightness-100" />
+            </a>
           </div>
           <h2 className="text-[10px] font-black mb-8 text-center text-[#CD7F32] uppercase tracking-[0.4em] italic">
             {isRegistering ? "Novo Vendedor" : "Painel do Vendedor"}
