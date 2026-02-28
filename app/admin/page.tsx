@@ -66,53 +66,48 @@ export default function AdminPage() {
 
   // LÓGICA DE CADASTRO (LEAD GENERATION)
   const handleSignUp = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  
-  // 1. Criar o usuário no Supabase Auth
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: regData.email,
-    password: regData.password,
-  });
+    e.preventDefault();
+    setLoading(true);
+    
+    // 1. Cria o usuário no Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: regData.email,
+      password: regData.password,
+    });
 
-  if (authError) {
-    alert("Erro no Login/Senha: " + authError.message);
-    setLoading(false);
-    return;
-  }
+    if (authError) {
+      alert("Erro no cadastro: " + authError.message);
+      setLoading(false);
+      return;
+    }
 
-  const newUser = authData?.user;
+    const newUser = authData?.user;
 
-  if (newUser) {
-    // 2. Tentar salvar os dados na tabela perfis
-    const { error: profileError } = await supabase
-      .from('perfis')
-      .insert([
-        {
-          id: newUser.id,
+    if (newUser) {
+      // 2. A MÁGICA: O banco já criou o perfil via Trigger. 
+      // Agora nós apenas ATUALIZAMOS os dados (Update)
+      const { error: profileError } = await supabase
+        .from('perfis')
+        .update({
           nome_completo: regData.nome_completo,
           data_nascimento: regData.data_nascimento,
           whatsapp: regData.whatsapp,
           cidade: regData.cidade,
           cep: regData.cep,
           nome_loja: regData.nome_loja,
-          email_contato: regData.email,
-          is_admin: false // Garante que novos não sejam admins
-        }
-      ]);
+        })
+        .eq('id', newUser.id); // Identifica o perfil pelo ID que acabou de ser criado
 
-    if (profileError) {
-      // O "Dedo-duro": Se der erro aqui, ele vai te dizer o motivo exato no alert
-      console.error("Erro detalhado:", profileError);
-      alert(`Erro no Banco de Dados: ${profileError.message} (Dica: ${profileError.hint || 'Verifique as colunas'})`);
-    } else {
-      alert("PASTA ATIVADA! Verifique seu e-mail para confirmar o cadastro.");
-      setIsRegistering(false);
+      if (profileError) {
+        console.error("Erro ao atualizar perfil:", profileError);
+        alert("Usuário criado, mas houve um problema nos dados complementares. Tente editar no painel.");
+      } else {
+        alert("CADASTRO MASTER REALIZADO! Verifique seu e-mail.");
+        setIsRegistering(false);
+      }
     }
-  }
-
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
