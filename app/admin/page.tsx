@@ -289,7 +289,7 @@ export default function AdminPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="text-[8px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-white/5">
+                  <tr className="text-[14px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-white/5">
                     <th className="p-6">Card</th>
                     <th className="p-6">Gestão</th>
                     <th className="p-6">Preço</th>
@@ -299,11 +299,11 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                   {cartas.map(item => (
                     <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                      <td className="p-6 flex items-center gap-4">
-                        <div className="w-10 h-14 bg-slate-100 dark:bg-black/40 p-1 rounded-sm shrink-0"><img src={item.image_url} className="w-full h-full object-contain" /></div>
-                        <div className="flex flex-col"><span className="font-bold text-xs uppercase tracking-tight text-slate-800 dark:text-gray-200">{item.name}</span><span className="text-[8px] text-slate-400 dark:text-white/10 font-bold uppercase">{item.rarity}</span></div>
+                      <td className="p-4 flex items-center gap-4">
+                        <div className="w-19.5 h-28 bg-slate-100 dark:bg-black/40 p-0.5 rounded-sm shrink-0"><img src={item.image_url} className="w-full h-full object-contain" /></div>
+                        <div className="flex flex-col"><span className="font-bold text-m uppercase tracking-tight text-slate-800 dark:text-gray-200">{item.name}</span><span className="text-[12px] text-slate-400 dark:text-white/10 font-bold uppercase">{item.rarity}</span></div>
                       </td>
-                      <td className="p-6">
+                      <td className="p-4">
                         <div className="flex flex-col gap-3">
                           <select defaultValue={item.category} onChange={(e) => updateCategory(item.id, e.target.value)} className="bg-transparent text-[9px] font-black text-[#CD7F32] uppercase outline-none">{['Monstro Main', 'Monstro Extra', 'Magia', 'Armadilha'].map(c => <option key={c} value={c}>{c}</option>)}</select>
                           <div className="flex items-center gap-3">
