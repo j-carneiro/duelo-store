@@ -280,8 +280,13 @@ const handleWhatsApp = async () => {
           <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedCardDetails(null)}></div>
           <div className="relative bg-white dark:bg-[#1E1E1E] border border-slate-200 dark:border-white/10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-sm flex flex-col md:flex-row shadow-2xl animate-in zoom-in-95 duration-200">
             <button onClick={() => setSelectedCardDetails(null)} className="absolute top-4 right-4 text-slate-400 hover:text-[#CD7F32] z-10"><X size={24} /></button>
-            <div className="w-full md:w-1/2 p-6 md:p-8 bg-slate-50 dark:bg-black/20 flex items-center justify-center">
-              <img src={selectedCardDetails.card_images[0].image_url} className="max-h-[50vh] md:max-h-[70vh] object-contain shadow-2xl" />
+            <div className="w-full md:w-1/2 p-8 bg-slate-50 dark:bg-black/20 flex items-center justify-center">
+              <img 
+                /* A MÁGICA: Usamos a imagem salva no NOSSO banco de dados */
+                src={activeLocalCard?.image_url || selectedCardDetails.card_images[0].image_url} 
+                alt={activeLocalCard?.name}
+                className="max-h-[60vh] md:max-h-full object-contain shadow-2xl animate-in fade-in duration-500" 
+              />
             </div>
             <div className="w-full md:w-1/2 p-6 md:p-10 space-y-6">
               <div>
