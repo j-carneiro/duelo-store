@@ -69,43 +69,31 @@ export default function AdminPage() {
     e.preventDefault();
     setLoading(true);
     
-    // 1. Cria o usuário no Auth
+    // A MÁGICA: Enviamos tudo de uma vez para o Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: regData.email,
       password: regData.password,
-    });
-
-    if (authError) {
-      alert("Erro no cadastro: " + authError.message);
-      setLoading(false);
-      return;
-    }
-
-    const newUser = authData?.user;
-
-    if (newUser) {
-      // 2. A MÁGICA: O banco já criou o perfil via Trigger. 
-      // Agora nós apenas ATUALIZAMOS os dados (Update)
-      const { error: profileError } = await supabase
-        .from('perfis')
-        .update({
+      options: {
+        // Esses dados serão lidos pelo Trigger que você acabou de rodar no SQL
+        data: {
           nome_completo: regData.nome_completo,
           data_nascimento: regData.data_nascimento,
           whatsapp: regData.whatsapp,
           cidade: regData.cidade,
           cep: regData.cep,
-          nome_loja: regData.nome_loja,
-        })
-        .eq('id', newUser.id); // Identifica o perfil pelo ID que acabou de ser criado
-
-      if (profileError) {
-        console.error("Erro ao atualizar perfil:", profileError);
-        alert("Usuário criado, mas houve um problema nos dados complementares. Tente editar no painel.");
-      } else {
-        alert("CADASTRO MASTER REALIZADO! Verifique seu e-mail.");
-        setIsRegistering(false);
+          nome_loja: regData.nome_loja
+        }
       }
+    });
+
+    if (authError) {
+      alert("Erro no cadastro: " + authError.message);
+    } else {
+      // Se chegou aqui, o Trigger já criou o perfil no banco de dados automaticamente!
+      alert("CADASTRO REALIZADO! Verifique seu e-mail para ativar sua conta.");
+      setIsRegistering(false);
     }
+    
     setLoading(false);
   };
 
