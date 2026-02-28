@@ -66,53 +66,53 @@ export default function AdminPage() {
 
   // LÓGICA DE CADASTRO (LEAD GENERATION)
   const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // 1. Tenta criar o usuário no Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: regData.email,
-      password: regData.password,
-    });
+  e.preventDefault();
+  setLoading(true);
+  
+  // 1. Criar o usuário no Supabase Auth
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: regData.email,
+    password: regData.password,
+  });
 
-    // Se houver erro no Auth (e-mail já existe, senha fraca, etc)
-    if (authError) {
-      alert("Erro no cadastro: " + authError.message);
-      setLoading(false);
-      return;
-    }
+  if (authError) {
+    alert("Erro no Login/Senha: " + authError.message);
+    setLoading(false);
+    return;
+  }
 
-    // A TRAVA DE SEGURANÇA PARA O TYPESCRIPT:
-    // Verificamos se o usuário realmente foi retornado
-    const newUser = authData?.user;
+  const newUser = authData?.user;
 
-    if (!newUser) {
-      alert("Erro inesperado: Usuário não retornado pelo sistema.");
-      setLoading(false);
-      return;
-    }
+  if (newUser) {
+    // 2. Tentar salvar os dados na tabela perfis
+    const { error: profileError } = await supabase
+      .from('perfis')
+      .insert([
+        {
+          id: newUser.id,
+          nome_completo: regData.nome_completo,
+          data_nascimento: regData.data_nascimento,
+          whatsapp: regData.whatsapp,
+          cidade: regData.cidade,
+          cep: regData.cep,
+          nome_loja: regData.nome_loja,
+          email_contato: regData.email,
+          is_admin: false // Garante que novos não sejam admins
+        }
+      ]);
 
-    // 2. Agora o TypeScript sabe que 'newUser' existe. Salvamos o perfil.
-    const { error: profError } = await supabase.from('perfis').insert([{
-      id: newUser.id, // Agora ele não reclama mais do id
-      nome_completo: regData.nome_completo,
-      data_nascimento: regData.data_nascimento,
-      whatsapp: regData.whatsapp,
-      cidade: regData.cidade,
-      cep: regData.cep,
-      nome_loja: regData.nome_loja,
-      email_contato: regData.email
-    }]);
-
-    if (profError) {
-      alert("Conta criada, mas erro ao salvar dados: " + profError.message);
+    if (profileError) {
+      // O "Dedo-duro": Se der erro aqui, ele vai te dizer o motivo exato no alert
+      console.error("Erro detalhado:", profileError);
+      alert(`Erro no Banco de Dados: ${profileError.message} (Dica: ${profileError.hint || 'Verifique as colunas'})`);
     } else {
-      alert("Cadastro Master realizado! Verifique seu e-mail.");
+      alert("PASTA ATIVADA! Verifique seu e-mail para confirmar o cadastro.");
       setIsRegistering(false);
     }
-    
-    setLoading(false);
-  };
+  }
+
+  setLoading(false);
+};
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
