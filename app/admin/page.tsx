@@ -68,26 +68,49 @@ export default function AdminPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    // 1. Tenta criar o usuário no Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: regData.email,
       password: regData.password,
     });
+
+    // Se houver erro no Auth (e-mail já existe, senha fraca, etc)
     if (authError) {
-      alert("Erro: " + authError.message);
-    } else if (authData.user) {
-      const { error: profError } = await supabase.from('perfis').insert([{
-        id: authData.user.id,
-        nome_completo: regData.nome_completo,
-        data_nascimento: regData.data_nascimento,
-        whatsapp: regData.whatsapp,
-        cidade: regData.cidade,
-        cep: regData.cep,
-        nome_loja: regData.nome_loja,
-        email_contato: regData.email
-      }]);
-      if (profError) alert("Erro ao criar perfil: " + profError.message);
-      else { alert("Conta Master criada! Verifique seu e-mail."); setIsRegistering(false); }
+      alert("Erro no cadastro: " + authError.message);
+      setLoading(false);
+      return;
     }
+
+    // A TRAVA DE SEGURANÇA PARA O TYPESCRIPT:
+    // Verificamos se o usuário realmente foi retornado
+    const newUser = authData?.user;
+
+    if (!newUser) {
+      alert("Erro inesperado: Usuário não retornado pelo sistema.");
+      setLoading(false);
+      return;
+    }
+
+    // 2. Agora o TypeScript sabe que 'newUser' existe. Salvamos o perfil.
+    const { error: profError } = await supabase.from('perfis').insert([{
+      id: newUser.id, // Agora ele não reclama mais do id
+      nome_completo: regData.nome_completo,
+      data_nascimento: regData.data_nascimento,
+      whatsapp: regData.whatsapp,
+      cidade: regData.cidade,
+      cep: regData.cep,
+      nome_loja: regData.nome_loja,
+      email_contato: regData.email
+    }]);
+
+    if (profError) {
+      alert("Conta criada, mas erro ao salvar dados: " + profError.message);
+    } else {
+      alert("Cadastro Master realizado! Verifique seu e-mail.");
+      setIsRegistering(false);
+    }
+    
     setLoading(false);
   };
 
@@ -222,9 +245,15 @@ export default function AdminPage() {
                   <option value="Quarter Century Secret Rare">Quarter Century Secret Rare</option>
                   <option value="Starlight Rare">Starlight Rare</option>
                   <option value="Collector's Rare">Collector's Rare</option>
+                  <option value="Prismatic Secret Rare">Prismatic Secret Rare</option>
+                  <option value="Prismatic Collector’s Rare">Prismatic Collector’s Rare</option>
                   <option value="Ultimate Rare">Ultimate Rare</option>
+                  <option value="Gold Secret Rare">Gold Secret Rare</option>
+                  <option value="Gold Rare">Gold Rare</option>
                   <option value="Secret Rare">Secret Rare</option>
                   <option value="Ultra Rare">Ultra Rare</option>
+                  <option value="Super Rare">Super Rare</option>
+                  <option value="Rare">Rare</option>
                   <option value="Common">Common</option>
                 </select>
                 <div className="grid grid-cols-2 gap-2">
