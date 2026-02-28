@@ -84,27 +84,44 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2000);
   };
 
-  const handleWhatsApp = () => {
-    if (cart.length === 0) return;
-    const foneVendedor = perfil?.whatsapp || "5511999999999";
-    const nomeLoja = perfil?.nome_loja || "Vendedor";
+  const handleWhatsApp = async () => {
+  if (cart.length === 0) return;
 
-    let total = 0;
-    let texto = `🟠 *NOVO PEDIDO - ${nomeLoja.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
-    
-    const agrupado: any = {};
-    cart.forEach(item => {
-      agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 };
-    });
+  const foneVendedor = perfil?.whatsapp || cart[0].vendedor?.whatsapp || "5511999999999";
+  const nomeLoja = perfil?.nome_loja || cart[0].vendedor?.nome_loja || "Vendedor";
+  const vendedorId = perfil?.id || cart[0].vendedor_id;
 
-    Object.values(agrupado).forEach((item: any) => {
-      texto += `• ${item.qtd}x ${item.name} (${item.rarity})\n  R$ ${(item.price * item.qtd).toFixed(2)}\n\n`;
-      total += (item.price * item.qtd);
-    });
+  let total = 0;
+  const itensNomes: string[] = [];
+  
+  const agrupado: any = {};
+  cart.forEach(item => {
+    agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 };
+  });
 
-    texto += `*TOTAL: R$ ${total.toFixed(2)}*`;
-    window.open(`https://wa.me/${foneVendedor}?text=${encodeURIComponent(texto)}`);
-  };
+  let texto = `🟠 *NOVO PEDIDO - ${nomeLoja.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
+
+  Object.values(agrupado).forEach((item: any) => {
+    texto += `• ${item.qtd}x ${item.name} (${item.rarity})\n  R$ ${(item.price * item.qtd).toFixed(2)}\n\n`;
+    total += (item.price * item.qtd);
+    itensNomes.push(`${item.qtd}x ${item.name}`);
+  });
+
+  texto += `*TOTAL: R$ ${total.toFixed(2)}*`;
+
+  // --- A MÁGICA DO RELATÓRIO: SALVAR NO BANCO ---
+  try {
+    await supabase.from('checkouts').insert([{
+      vendedor_id: vendedorId,
+      valor_total: total,
+      itens: itensNomes.join(', ') // Salva a lista de cartas como texto
+    }]);
+  } catch (e) {
+    console.error("Erro ao logar checkout:", e);
+  }
+
+  window.open(`https://wa.me/${foneVendedor}?text=${encodeURIComponent(texto)}`);
+};
 
   // CATEGORIAS DINÂMICAS
   const categoriasBase = ['Monstro Main', 'Monstro Extra', 'Magia', 'Armadilha'];

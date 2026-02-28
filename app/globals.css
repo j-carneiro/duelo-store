@@ -1,18 +1,26 @@
 @import "tailwindcss";
 
+/* ADICIONE ESTA LINHA: Ela força o Tailwind v4 a mapear a classe .dark */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-cobre: #CD7F32;
+}
+
+/* Reset e transições */
 @layer base {
-  html, body {
-    max-width: 100vw;
-    overflow-x: hidden;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  body {
+    @apply bg-[#F8FAFC] text-slate-900 transition-colors duration-500;
   }
   
-  * {
-    box-sizing: inherit;
+  .dark body {
+    @apply bg-[#121212] text-gray-100;
   }
 }
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+* {
+  transition: background-color 0.5s ease-in-out, border-color 0.5s ease-in-out, color 0.3s ease-in-out;
+}

@@ -82,21 +82,44 @@ export default function Loja() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2000);
   };
 
-  const handleWhatsApp = () => {
+const handleWhatsApp = async () => {
     if (cart.length === 0) return;
-    const foneVendedor = cart[0].vendedor?.whatsapp || "5511999999999";
-    const nomeLoja = cart[0].vendedor?.nome_loja || "Loja Parceira";
+
+    // Na Home, pegamos o vendedor do primeiro item da sacola
+    const vendedorInfo = cart[0].vendedor; 
+    const vendedorId = cart[0].vendedor_id;
+    const foneVendedor = vendedorInfo?.whatsapp || "5511999999999";
+    const nomeLoja = vendedorInfo?.nome_loja || "Vendedor";
+
     let total = 0;
-    let texto = `🟠 *PEDIDO - ${nomeLoja.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
+    const itensNomes: string[] = [];
+    
     const agrupado: any = {};
     cart.forEach(item => {
       agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 };
     });
+
+    let texto = `🟠 *PEDIDO - ${nomeLoja.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
+
     Object.values(agrupado).forEach((item: any) => {
       texto += `• ${item.qtd}x ${item.name} (${item.rarity})\n  R$ ${(item.price * item.qtd).toFixed(2)}\n\n`;
       total += (item.price * item.qtd);
+      itensNomes.push(`${item.qtd}x ${item.name}`);
     });
+
     texto += `*TOTAL: R$ ${total.toFixed(2)}*`;
+
+    // --- REGISTRO NO RELATÓRIO MASTER ---
+    try {
+      await supabase.from('checkouts').insert([{
+        vendedor_id: vendedorId,
+        valor_total: total,
+        itens: itensNomes.join(', ')
+      }]);
+    } catch (e) {
+      console.error("Erro ao logar checkout:", e);
+    }
+
     window.open(`https://wa.me/${foneVendedor}?text=${encodeURIComponent(texto)}`);
   };
 
