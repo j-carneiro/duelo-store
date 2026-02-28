@@ -120,7 +120,7 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
     console.error("Erro ao logar checkout:", e);
   }
 
-  window.open(`https://wa.me/${foneVendedor}?text=${encodeURIComponent(texto)}`);
+  window.open(`https://wa.me/55${foneVendedor}?text=${encodeURIComponent(texto)}`);
 };
 
   // CATEGORIAS DINÂMICAS
