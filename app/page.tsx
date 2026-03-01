@@ -82,12 +82,15 @@ export default function Loja() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2000);
   };
 
-const handleWhatsApp = async () => {
+  const handleWhatsApp = async () => {
     if (cart.length === 0) return;
 
-    // Na Home, pegamos o vendedor do primeiro item da sacola
-    const vendedorInfo = cart[0].vendedor; 
-    const vendedorId = cart[0].vendedor_id;
+    // Na Home, extraímos os dados do vendedor do primeiro item da sacola
+    const primeiroItem = cart[0];
+    const vendedorInfo = primeiroItem.vendedor; 
+    const vendedorId = primeiroItem.vendedor_id;
+    
+    // Se não encontrar o WhatsApp, usa um número padrão (substitua pelo seu se quiser)
     const foneVendedor = vendedorInfo?.whatsapp || "5511999999999";
     const nomeLoja = vendedorInfo?.nome_loja || "Vendedor";
 
@@ -99,7 +102,7 @@ const handleWhatsApp = async () => {
       agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 };
     });
 
-    let texto = `🟠 *PEDIDO - ${nomeLoja.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
+    let texto = `🟠 *NOVO PEDIDO - ${nomeLoja.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
 
     Object.values(agrupado).forEach((item: any) => {
       texto += `• ${item.qtd}x ${item.name} (${item.rarity})\n  R$ ${(item.price * item.qtd).toFixed(2)}\n\n`;
@@ -109,18 +112,20 @@ const handleWhatsApp = async () => {
 
     texto += `*TOTAL: R$ ${total.toFixed(2)}*`;
 
-    // --- REGISTRO NO RELATÓRIO MASTER ---
-    try {
-      await supabase.from('checkouts').insert([{
-        vendedor_id: vendedorId,
-        valor_total: total,
-        itens: itensNomes.join(', ')
-      }]);
-    } catch (e) {
-      console.error("Erro ao logar checkout:", e);
+    // --- REGISTRO NO RELATÓRIO MASTER (PÁGINA /MASTER) ---
+    if (vendedorId) {
+      try {
+        await supabase.from('checkouts').insert([{
+          vendedor_id: vendedorId,
+          valor_total: total,
+          itens: itensNomes.join(', ')
+        }]);
+      } catch (e) {
+        console.error("Erro ao logar checkout:", e);
+      }
     }
 
-    window.open(`https://wa.me/55${foneVendedor}?text=${encodeURIComponent(texto)}`);
+    window.open(`https://wa.me/${foneVendedor}?text=${encodeURIComponent(texto)}`);
   };
 
   const filteredCards = estoque.filter(card => {
@@ -224,7 +229,11 @@ const handleWhatsApp = async () => {
                           </div>
                           <h4 className="font-bold text-white dark:text-gray-100 text-[12px] leading-tight line-clamp-2 min-h-[1.8rem] mb-0.5 tracking-tight">{card.name}</h4>
                           <div className="flex items-center gap-1 text-white/70 dark:text-white/30 font-bold text-[8px] uppercase tracking-tighter mb-2">
-                            <span>{card.rarity}</span> <span className="opacity-30">|</span> <span>{card.condition}</span>
+                            <span className="text-[#CD7F32] dark:text-amber-500">{card.edition || 'SET-000'}</span>
+                            <span className="opacity-30">|</span>
+                            <span>{card.rarity}</span> 
+                            <span className="opacity-30">|</span> 
+                            <span>{card.condition}</span>
                           </div>
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-baseline gap-0.5">
@@ -292,8 +301,16 @@ const handleWhatsApp = async () => {
               <div>
                 <h2 className="text-2xl font-black text-[#CD7F32] tracking-tighter uppercase italic leading-none mb-2">{selectedCardDetails.name}</h2>
                 <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">{selectedCardDetails.type} | {selectedCardDetails.race}</p>
-                  <span className="bg-[#CD7F32]/10 text-[#CD7F32] text-[9px] font-black px-2 py-0.5 rounded-sm border border-[#CD7F32]/20 uppercase">{activeLocalCard?.condition}</span>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">
+                    {selectedCardDetails.type} | {selectedCardDetails.race}
+                  </p>
+                  {/* TAG DA EDIÇÃO */}
+                  <span className="bg-white/10 text-white text-[9px] font-black px-2 py-0.5 rounded-sm border border-white/20">
+                    {activeLocalCard?.edition}
+                  </span>
+                  <span className="bg-[#CD7F32]/10 text-[#CD7F32] text-[9px] font-black px-2 py-0.5 rounded-sm border border-[#CD7F32]/20">
+                    {activeLocalCard?.condition}
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 border-y border-slate-100 dark:border-white/5 py-4 font-black">
