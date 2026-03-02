@@ -4,8 +4,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { 
-  Search, Filter, Trash2, Send, ShieldCheck, 
-  Loader2, Plus, ShoppingBag, X, CheckCircle2, Info, AlertTriangle, ChevronRight, MapPin, Layers
+  Search, Filter, Trash2, Send, Loader2, Plus, ShoppingBag, X, CheckCircle2, Info, AlertTriangle, ChevronRight, MapPin
 } from 'lucide-react';
 
 export default function Loja() {
@@ -28,22 +27,31 @@ export default function Loja() {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // BUSCA DE DADOS (CARTAS + VENDEDORES COM SLUG)
   async function fetchDadosIniciais() {
     setLoading(true);
     try {
+      // 1. Busca Cartas com dados do vendedor (Incluindo Slug e Cidade)
       const { data: cartasData, error: cartasError } = await supabase
         .from('cartas')
-        .select('*, vendedor:vendedor_id(nome_loja, whatsapp, cidade)')
+        .select(`
+          *,
+          vendedor:vendedor_id(id, nome_loja, whatsapp, cidade, slug)
+        `)
         .eq('is_active', true);
+
       if (cartasError) throw cartasError;
       setEstoque(cartasData || []);
 
+      // 2. Busca as lojas mais recentes usando o Slug para o Link
       const { data: perfisData } = await supabase
         .from('perfis')
         .select('*')
         .limit(5)
         .order('id', { ascending: false });
+      
       setVendedores(perfisData || []);
+
     } catch (error: any) {
       console.error("Erro no carregamento:", error.message);
     } finally {
@@ -65,7 +73,7 @@ export default function Loja() {
     return matchSearch && matchRarity && matchCondition && matchType && matchSubType;
   });
 
-  // OPÇÕES DINÂMICAS PARA OS FILTROS (SÓ MOSTRA O QUE TEM NO ESTOQUE)
+  // OPÇÕES DINÂMICAS PARA OS FILTROS (Extrai do que existe no banco)
   const optRarities = Array.from(new Set(estoque.map(c => c.rarity))).filter(Boolean).sort();
   const optConditions = Array.from(new Set(estoque.map(c => c.condition))).filter(Boolean).sort();
   const optTypes = Array.from(new Set(estoque.map(c => c.category))).filter(Boolean).sort();
@@ -88,8 +96,8 @@ export default function Loja() {
 
   // FUNÇÕES DE CARRINHO E API
   const addToCart = (card: any) => {
-    const qtdBag = cart.filter(item => item.id === card.id).length;
-    if (qtdBag < card.stock) {
+    const qBag = cart.filter(item => item.id === card.id).length;
+    if (qBag < card.stock) {
       setCart([...cart, { ...card, cartId: Math.random() }]);
       setToast({ show: true, message: `${card.name} na sacola!`, type: 'success' });
     } else {
@@ -112,27 +120,41 @@ export default function Loja() {
     } catch (error) { console.error(error); }
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     if (cart.length === 0) return;
     const v = cart[0].vendedor;
+    const vendedorId = cart[0].vendedor_id;
     let total = 0;
+    const itensNomes: string[] = [];
     let texto = `🟠 *PEDIDO - ${v?.nome_loja?.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
+    
     const agrupado: any = {};
-    cart.forEach(item => {
-      agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 };
-    });
+    cart.forEach(item => { agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 }; });
+    
     Object.values(agrupado).forEach((item: any) => {
       texto += `• ${item.qtd}x ${item.name} (${item.rarity})\n  R$ ${(item.price * item.qtd).toFixed(2)}\n\n`;
       total += (item.price * item.qtd);
+      itensNomes.push(`${item.qtd}x ${item.name}`);
     });
+
     texto += `*TOTAL: R$ ${total.toFixed(2)}*`;
+
+    // REGISTRO NO MASTER INSIGHTS
+    if (vendedorId) {
+      await supabase.from('checkouts').insert([{
+        vendedor_id: vendedorId,
+        valor_total: total,
+        itens: itensNomes.join(', ')
+      }]);
+    }
+
     window.open(`https://wa.me/${v?.whatsapp}?text=${encodeURIComponent(texto)}`);
   };
 
   if (!mounted) return null;
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-[#121212]">
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#F8FAFC] dark:bg-[#121212]">
       <Loader2 className="animate-spin text-[#CD7F32]" size={32} />
     </div>
   );
@@ -151,13 +173,13 @@ export default function Loja() {
       {/* HEADER */}
       <nav className="bg-[#CD7F32] dark:bg-[#1E1E1E] text-white sticky top-0 z-40 py-3 px-4 md:px-6 shadow-xl w-full flex justify-between items-center transition-colors">
         <Link href="/" className="flex-shrink-0">
-          <img src="/logo.svg" alt="Logo" className="h-10 md:h-12 w-auto brightness-0 invert dark:brightness-100 dark:invert-0" />
+          <img src="/logo.svg" alt="Logo" className="h-10 md:h-12 w-auto brightness-0 invert dark:brightness-100 dark:invert-0 transition-all" />
         </Link>
         <div className="flex-1 max-w-md mx-8 relative hidden md:block">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={16} />
           <input 
             type="text" placeholder="BUSCAR NO ACERVO..." 
-            className="w-full pl-12 pr-4 py-2 bg-white/10 border border-white/10 rounded-sm text-[10px] tracking-widest outline-none text-white placeholder:text-white/30"
+            className="w-full pl-12 pr-4 py-2 bg-white/10 border border-white/10 rounded-sm text-[10px] tracking-widest outline-none focus:bg-white/20 transition-all text-white"
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
@@ -183,7 +205,7 @@ export default function Loja() {
               { title: 'Estado', options: optConditions, state: selConditions, setState: setSelConditions },
               { title: 'Tipo', options: optTypes, state: selTypes, setState: setSelTypes },
               { title: 'Sub Tipo', options: optSubTypes, state: selSubTypes, setState: setSelSubTypes },
-            ].map(group => (
+            ].map(group => group.options.length > 0 && (
               <div key={group.title} className="mb-6">
                 <h4 className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-3">{group.title}</h4>
                 <div className="space-y-2">
@@ -229,16 +251,18 @@ export default function Loja() {
                         <div onClick={() => fetchDetails(card)} className="aspect-[3/4] p-2 bg-white/10 dark:bg-[#161616] relative overflow-hidden cursor-help">
                           <img src={card.image_url} className={`object-contain w-full h-full transition-transform duration-700 group-hover:scale-110 ${esgotado ? 'grayscale opacity-30' : ''}`} alt={card.name} />
                           {esgotado && <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-[8px] text-white font-black uppercase tracking-[0.2em]">Esgotado</span>}
-                          {card.is_pendulum && <div className="absolute top-2 left-2 bg-green-500/80 text-[6px] font-black text-white px-1.5 py-0.5 rounded-sm uppercase tracking-widest">Pêndulo</div>}
+                          {card.is_pendulum && <div className="absolute top-2 left-2 bg-green-500/80 text-[6px] font-black text-white px-1.5 py-0.5 rounded-sm uppercase tracking-widest shadow-lg">Pêndulo</div>}
                         </div>
                         <div className="p-2 flex flex-col flex-1">
                           <div className="flex items-center justify-between mb-0.5 opacity-70">
-                            <p className="text-[7px] font-black text-white dark:text-[#CD7F32] uppercase tracking-[0.2em] truncate flex-1">{card.vendedor?.nome_loja || 'Duelista'}</p>
+                            <p className="text-[7px] font-black text-white dark:text-[#CD7F32] uppercase tracking-[0.2em] truncate flex-1">
+                               {card.vendedor?.nome_loja || 'Duelista'}
+                            </p>
                             {card.vendedor?.cidade && <p className="text-[6px] font-bold text-white/50 dark:text-white/20 uppercase tracking-tighter italic">{card.vendedor.cidade}</p>}
                           </div>
                           <h4 className="font-bold text-white dark:text-gray-100 text-[12px] leading-tight line-clamp-2 min-h-[1.8rem] mb-0.5 tracking-tight uppercase">{card.name}</h4>
                           <div className="flex items-center gap-1 text-white/70 dark:text-white/30 font-bold text-[8px] uppercase tracking-tighter mb-2">
-                            <span>{card.rarity}</span> <span className="opacity-30">|</span> <span>{card.condition}</span> <span className="opacity-30">|</span> <span>{card.sub_category}</span>
+                             <span>{card.edition}</span> <span className="opacity-30">|</span> <span>{card.rarity}</span> <span className="opacity-30">|</span> <span>{card.condition}</span>
                           </div>
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-baseline gap-0.5">
@@ -270,17 +294,21 @@ export default function Loja() {
           </section>
         </div>
 
-        {/* COLUNA DIREITA: NOVOS VENDEDORES */}
+        {/* COLUNA DIREITA: NOVOS VENDEDORES (USANDO SLUG) */}
         <aside className="w-full lg:w-56 shrink-0 space-y-8">
           <div className="bg-white dark:bg-[#1E1E1E] p-6 rounded-sm border border-slate-200 dark:border-white/5 shadow-xl transition-colors">
             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#CD7F32] mb-6 border-b border-slate-100 dark:border-white/5 pb-3">Novas Lojas</h3>
             <div className="space-y-5">
               {vendedores.map(v => (
-                <Link key={v.id} href={`/loja/${v.id}`} className="flex items-center gap-3 group">
-                  <div className="w-8 h-8 rounded-full bg-[#CD7F32] flex-shrink-0 flex items-center justify-center text-white font-black text-[10px] group-hover:scale-110 transition-transform">{v.nome_loja?.substring(0, 2).toUpperCase()}</div>
+                <Link key={v.id} href={`/loja/${v.slug || v.id}`} className="flex items-center gap-3 group">
+                  <div className="w-8 h-8 rounded-full bg-[#CD7F32] flex-shrink-0 flex items-center justify-center text-white font-black text-[10px] group-hover:scale-110 transition-transform">
+                    {v.nome_loja?.substring(0, 2).toUpperCase()}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold truncate dark:text-gray-100 group-hover:text-[#CD7F32] transition-colors uppercase">{v.nome_loja}</p>
-                    <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-1"><MapPin size={8} /> {v.cidade || 'Brasil'}</p>
+                    <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-1">
+                      <MapPin size={8} /> {v.cidade || 'Brasil'}
+                    </p>
                   </div>
                   <ChevronRight size={10} className="text-slate-300" />
                 </Link>
@@ -295,7 +323,7 @@ export default function Loja() {
         </aside>
       </main>
 
-      {/* MODAL DETALHES (API) */}
+      {/* MODAL DETALHES (USANDO IMAGEM LOCAL PREFERENCIALMENTE) */}
       {selectedCardDetails && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedCardDetails(null)}></div>
@@ -313,10 +341,10 @@ export default function Loja() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 border-y border-slate-100 dark:border-white/5 py-4 font-black">
-                {selectedCardDetails.level && <div><span className="text-[9px] text-slate-400 block mb-1">NÍVEL</span><span className="text-xl">⭐ {selectedCardDetails.level}</span></div>}
-                {selectedCardDetails.atk !== undefined && <div><span className="text-[9px] text-slate-400 block mb-1">ATK / DEF</span><span className="text-xl">{selectedCardDetails.atk} / {selectedCardDetails.def}</span></div>}
+                {selectedCardDetails.level && <div><span className="text-[9px] text-slate-400 block mb-1 uppercase">Nível</span><span className="text-xl">⭐ {selectedCardDetails.level}</span></div>}
+                {selectedCardDetails.atk !== undefined && <div><span className="text-[9px] text-slate-400 block mb-1 uppercase">ATK / DEF</span><span className="text-xl">{selectedCardDetails.atk} / {selectedCardDetails.def}</span></div>}
               </div>
-              <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed font-medium lowercase">{selectedCardDetails.desc}</p>
+              <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed font-medium lowercase italic">{selectedCardDetails.desc}</p>
             </div>
           </div>
         </div>
@@ -325,7 +353,7 @@ export default function Loja() {
       {/* DOCK CARRINHO */}
       <div className={`fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[60] transition-opacity ${isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsCartOpen(false)} />
       <aside className={`fixed top-0 right-0 h-full w-full sm:w-72 md:w-80 bg-white dark:bg-[#1E1E1E] text-slate-900 dark:text-white z-[70] transition-transform duration-500 transform ${isCartOpen ? 'translate-x-0' : 'translate-x-full shadow-2xl'}`}>
-        <div className="h-full flex flex-col p-6 md:p-8">
+        <div className="h-full flex flex-col p-8">
           <div className="flex justify-between items-center mb-10 border-b border-slate-100 dark:border-white/5 pb-6 text-[#CD7F32]">
             <h3 className="text-xs font-black uppercase tracking-[0.4em]">Sua Sacola</h3>
             <button onClick={() => setIsCartOpen(false)}><X size={24} /></button>

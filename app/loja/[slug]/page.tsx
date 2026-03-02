@@ -7,8 +7,8 @@ import {
   Search, Trash2, Send, Loader2, Plus, ShoppingBag, X, CheckCircle2, Info, ArrowLeft, AlertTriangle, MapPin, Filter
 } from 'lucide-react';
 
-export default function GaleriaVendedor({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function GaleriaVendedor({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params); // Captura o Slug da URL
   const [mounted, setMounted] = useState(false);
   const [cart, setCart] = useState<any[]>([]);
   const [estoque, setEstoque] = useState<any[]>([]);
@@ -30,22 +30,36 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
   async function fetchLoja() {
     setLoading(true);
     try {
-      const { data: perfilData } = await supabase.from('perfis').select('*').eq('id', id).single();
+      // 1. Busca os dados do perfil pelo SLUG
+      const { data: perfilData, error: perfilError } = await supabase
+        .from('perfis')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+      
+      if (perfilError) throw perfilError;
       setPerfil(perfilData);
 
-      const { data: cartasData } = await supabase
+      // 2. Busca apenas as cartas DESTE vendedor (usando o ID encontrado pelo slug)
+      const { data: cartasData, error: cartasError } = await supabase
         .from('cartas')
         .select('*')
-        .eq('vendedor_id', id)
+        .eq('vendedor_id', perfilData.id)
         .eq('is_active', true);
+      
+      if (cartasError) throw cartasError;
       setEstoque(cartasData || []);
-    } catch (error) { console.error(error); }
-    finally { setLoading(false); }
+
+    } catch (error: any) {
+      console.error("Erro ao buscar loja:", error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
     if (mounted) fetchLoja();
-  }, [mounted, id]);
+  }, [mounted, slug]);
 
   // LÓGICA DE FILTRAGEM
   const filteredCards = estoque.filter(card => {
@@ -56,7 +70,7 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
     return matchRarity && matchCondition && matchType && matchSubType;
   });
 
-  // OPÇÕES DINÂMICAS (SÓ O QUE O VENDEDOR TEM)
+  // OPÇÕES DINÂMICAS PARA OS FILTROS
   const optRarities = Array.from(new Set(estoque.map(c => c.rarity))).filter(Boolean).sort();
   const optConditions = Array.from(new Set(estoque.map(c => c.condition))).filter(Boolean).sort();
   const optTypes = Array.from(new Set(estoque.map(c => c.category))).filter(Boolean).sort();
@@ -67,7 +81,7 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
     else setArray([...array, value]);
   };
 
-  // CATEGORIAS DINÂMICAS
+  // CATEGORIAS DINÂMICAS ORDENADAS POR VOLUME
   const categoriasBase = ['MONSTRO MAIN', 'MONSTRO EXTRA', 'MAGIA', 'ARMADILHA'];
   const categoriasOrdenadas = categoriasBase
     .map(cat => ({
@@ -84,7 +98,7 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
       setCart([...cart, { ...card, cartId: Math.random() }]);
       setToast({ show: true, message: `${card.name} adicionado!`, type: 'success' });
     } else {
-      setToast({ show: true, message: `Limite atingido`, type: 'error' });
+      setToast({ show: true, message: `Limite de estoque atingido`, type: 'error' });
     }
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 2000);
   };
@@ -103,18 +117,31 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
     } catch (error) { console.error(error); }
   };
 
-  const handleWhatsApp = () => {
+  const handleWhatsApp = async () => {
     if (cart.length === 0) return;
     const fone = perfil?.whatsapp || "5511999999999";
     let total = 0;
+    const itensNomes: string[] = [];
     let texto = `🟠 *PEDIDO - ${perfil?.nome_loja?.toUpperCase()}* 🟠\nPlataforma: Duelo Store\n\n`;
+    
     const agrupado: any = {};
     cart.forEach(item => { agrupado[item.id] = agrupado[item.id] ? { ...agrupado[item.id], qtd: agrupado[item.id].qtd + 1 } : { ...item, qtd: 1 }; });
+    
     Object.values(agrupado).forEach((item: any) => {
       texto += `• ${item.qtd}x ${item.name} (${item.rarity})\n  R$ ${(item.price * item.qtd).toFixed(2)}\n\n`;
       total += (item.price * item.qtd);
+      itensNomes.push(`${item.qtd}x ${item.name}`);
     });
+
     texto += `*TOTAL: R$ ${total.toFixed(2)}*`;
+
+    // REGISTRO NO MASTER INSIGHTS
+    await supabase.from('checkouts').insert([{
+      vendedor_id: perfil.id,
+      valor_total: total,
+      itens: itensNomes.join(', ')
+    }]);
+
     window.open(`https://wa.me/${fone}?text=${encodeURIComponent(texto)}`);
   };
 
@@ -133,7 +160,7 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* HEADER DA LOJA */}
-      <nav className="bg-[#CD7F32] dark:bg-[#1E1E1E] text-white sticky top-0 z-40 py-3 px-4 md:px-6 shadow-xl w-full flex justify-between items-center">
+      <nav className="bg-[#CD7F32] dark:bg-[#1E1E1E] text-white sticky top-0 z-40 py-3 px-4 md:px-6 shadow-xl w-full flex justify-between items-center transition-colors">
         <div className="flex items-center gap-4">
           <Link href="/" className="p-2 hover:bg-white/10 rounded-full transition-colors"><ArrowLeft size={20} /></Link>
           <div className="flex flex-col">
@@ -150,24 +177,25 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
         </div>
       </nav>
 
-      <main className="max-w-[1400px] mx-auto p-4 md:p-10 flex flex-col lg:flex-row gap-10">
+      <main className="max-w-[1600px] mx-auto p-4 md:p-10 flex flex-col lg:flex-row gap-10">
         
         {/* COLUNA DE FILTROS (ESQUERDA) */}
         <aside className="w-full lg:w-48 shrink-0 space-y-8">
            <div className="mb-8 text-center lg:text-left space-y-4">
-              <div className="w-16 h-16 bg-[#CD7F32] rounded-full mx-auto lg:mx-0 flex items-center justify-center text-white text-2xl font-black shadow-xl border-4 border-white dark:border-[#1E1E1E]">
+              <div className="w-20 h-20 bg-[#CD7F32] rounded-full mx-auto lg:mx-0 flex items-center justify-center text-white text-3xl font-black shadow-2xl border-4 border-white dark:border-[#1E1E1E]">
                 {perfil?.nome_loja?.substring(0,2).toUpperCase()}
               </div>
               <div>
-                <h2 className="text-lg font-black uppercase tracking-tighter dark:text-white leading-tight">{perfil?.nome_loja}</h2>
-                <p className="text-[9px] font-bold text-slate-400 uppercase flex items-center justify-center lg:justify-start gap-1 mt-1">
-                  <MapPin size={10} className="text-[#CD7F32]"/> {perfil?.cidade || 'Brasil'}
+                <h2 className="text-2xl font-black uppercase tracking-tighter dark:text-white leading-none mb-2">{perfil?.nome_loja}</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center justify-center lg:justify-start gap-1">
+                  <MapPin size={12} className="text-[#CD7F32]"/> {perfil?.cidade || 'Brasil'}
                 </p>
+                <p className="text-[9px] font-black text-slate-300 dark:text-white/10 uppercase tracking-widest mt-2">{estoque.length} Cards Ativos</p>
               </div>
            </div>
 
            <div className="sticky top-28 space-y-6">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#CD7F32] flex items-center gap-2"><Filter size={14}/> Filtrar Loja</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#CD7F32] flex items-center gap-2 border-b border-slate-200 dark:border-white/5 pb-2"><Filter size={14}/> Filtros</h3>
               
               {[
                 { title: 'Raridade', options: optRarities, state: selRarities, setState: setSelRarities },
@@ -226,7 +254,7 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
                           <div className="p-2 flex flex-col flex-1">
                             <h4 className="font-bold text-white dark:text-gray-100 text-[12px] leading-tight line-clamp-2 min-h-[1.8rem] mb-0.5 tracking-tight uppercase">{card.name}</h4>
                             <div className="flex items-center gap-1 text-white/70 dark:text-white/30 font-bold text-[8px] uppercase tracking-tighter mb-2">
-                              <span>{card.rarity}</span> <span className="opacity-30">|</span> <span>{card.condition}</span> <span className="opacity-30">|</span> <span>{card.sub_category}</span>
+                              <span>{card.edition}</span> <span className="opacity-30">|</span> <span>{card.rarity}</span> <span className="opacity-30">|</span> <span>{card.condition}</span>
                             </div>
                             <div className="mb-2 flex items-center justify-between">
                               <div className="flex items-baseline gap-0.5">
@@ -252,14 +280,14 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
             ) : (
               <div className="py-20 text-center space-y-4 opacity-30">
                 <AlertTriangle className="mx-auto" size={48} />
-                <p className="text-[10px] font-black uppercase tracking-widest">Nenhum card encontrado com esses filtros.</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-center">Nenhum card disponível nesta vitrine com os filtros selecionados.</p>
               </div>
             )}
           </section>
         </div>
       </main>
 
-      {/* MODAL DETALHES (REUTILIZADO) */}
+      {/* MODAL DETALHES */}
       {selectedCardDetails && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setSelectedCardDetails(null)}></div>
@@ -280,13 +308,13 @@ export default function GaleriaVendedor({ params }: { params: Promise<{ id: stri
                 {selectedCardDetails.level && <div><span className="text-[9px] text-slate-400 block mb-1 uppercase">NÍVEL</span><span className="text-xl dark:text-white">⭐ {selectedCardDetails.level}</span></div>}
                 {selectedCardDetails.atk !== undefined && <div><span className="text-[9px] text-slate-400 block mb-1 uppercase">ATK / DEF</span><span className="text-xl dark:text-white">{selectedCardDetails.atk} / {selectedCardDetails.def}</span></div>}
               </div>
-              <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed font-medium lowercase">{selectedCardDetails.desc}</p>
+              <p className="text-sm text-slate-600 dark:text-gray-400 leading-relaxed font-medium lowercase italic">{selectedCardDetails.desc}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* DOCK CARRINHO (REUTILIZADO) */}
+      {/* DOCK CARRINHO */}
       <div className={`fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[60] transition-opacity ${isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} onClick={() => setIsCartOpen(false)} />
       <aside className={`fixed top-0 right-0 h-full w-full sm:w-80 bg-white dark:bg-[#1E1E1E] text-slate-900 dark:text-white z-[70] transition-transform duration-500 transform ${isCartOpen ? 'translate-x-0' : 'translate-x-full shadow-2xl'}`}>
         <div className="h-full flex flex-col p-8">

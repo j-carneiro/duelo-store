@@ -41,6 +41,18 @@ export default function AdminPage() {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^\w\s-]/g, '')       // Remove caracteres especiais
+      .replace(/\s+/g, '-')           // Substitui espaços por hifens
+      .replace(/--+/g, '-')           // Remove hifens duplos
+      .trim();
+  };
+
+
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
@@ -151,9 +163,24 @@ export default function AdminPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from('perfis').upsert({ id: user.id, nome_loja: storeName.toUpperCase(), whatsapp: storeWhatsapp, cidade: storeCity.toUpperCase() });
-    if (error) alert(error.message);
-    else { showToast("Perfil Atualizado!", 'success'); fetchProfile(user.id); }
+    
+    const slug = generateSlug(storeName); // Gera a URL amigável
+
+    const { error } = await supabase.from('perfis').upsert({ 
+      id: user.id, 
+      nome_loja: storeName.toUpperCase(), 
+      whatsapp: storeWhatsapp, 
+      cidade: storeCity.toUpperCase(),
+      slug: slug // SALVA O SLUG NO BANCO
+    });
+
+    if (error) {
+      if (error.code === '23505') alert("Este nome de loja já está em uso na URL. Tente outro.");
+      else alert("Erro ao salvar: " + error.message);
+    } else { 
+      showToast("Loja e Link configurados!", 'success'); 
+      fetchProfile(user.id); 
+    }
     setLoading(false);
   };
 
