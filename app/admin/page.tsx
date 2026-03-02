@@ -21,7 +21,6 @@ export default function AdminPage() {
   const [availableSets, setAvailableSets] = useState<any[]>([]);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
 
-  // ESTADOS DE FORMULÁRIO
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [storeName, setStoreName] = useState('');
@@ -32,8 +31,10 @@ export default function AdminPage() {
     email: '', password: '', nome_completo: '', data_nascimento: '', whatsapp: '', cidade: '', cep: '', nome_loja: ''
   });
 
+  // ESTADO DE NOVO CARD (COM IDIOMA)
   const [newCard, setNewCard] = useState({
-    name: '', rarity: 'COMMON', condition: 'NM', lang: 'PT', image_url: '', edition: '', is_active: true, stock: 1, price: 0, category: 'MONSTRO MAIN'
+    name: '', rarity: 'COMMON', condition: 'NM', lang: 'PT', image_url: '', edition: '', 
+    is_active: true, stock: 1, price: 0, category: 'MONSTRO MAIN', sub_category: 'EFEITO', is_pendulum: false
   });
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -97,19 +98,49 @@ export default function AdminPage() {
       if (cardFound) {
         setAvailableImages(cardFound.card_images);
         if (cardFound.card_sets) setAvailableSets(cardFound.card_sets);
-        let cat = "MONSTRO MAIN";
-        if (cardFound.type.toLowerCase().includes("spell")) cat = "MAGIA";
-        else if (cardFound.type.toLowerCase().includes("trap")) cat = "ARMADILHA";
-        else if (cardFound.type.toLowerCase().match(/fusion|synchro|xyz|link/)) cat = "MONSTRO EXTRA";
+        
+        const type = cardFound.type.toLowerCase();
+        const race = cardFound.race;
+
+        let autoCat = "MONSTRO MAIN";
+        let autoSub = "EFEITO";
+        let isPendulum = type.includes("pendulum");
+
+        if (type.includes("spell")) {
+          autoCat = "MAGIA";
+          if (race === "Normal") autoSub = "NORMAL";
+          else if (race === "Continuous") autoSub = "CONTÍNUA";
+          else if (race === "Equip") autoSub = "EQUIPAMENTO";
+          else if (race === "Quick-Play") autoSub = "QUICK-PLAY";
+          else if (race === "Field") autoSub = "CAMPO";
+        } else if (type.includes("trap")) {
+          autoCat = "ARMADILHA";
+          if (race === "Normal") autoSub = "NORMAL";
+          else if (race === "Continuous") autoSub = "CONTÍNUA";
+          else if (race === "Counter") autoSub = "COUNTER";
+        } else if (type.match(/fusion|synchro|xyz|link/)) {
+          autoCat = "MONSTRO EXTRA";
+          if (type.includes("fusion")) autoSub = "FUSÃO";
+          else if (type.includes("synchro")) autoSub = "SINCRO";
+          else if (type.includes("xyz")) autoSub = "XYZ";
+          else if (type.includes("link")) autoSub = "LINK";
+        } else {
+          autoCat = "MONSTRO MAIN";
+          if (type.includes("normal")) autoSub = "NORMAL";
+          else if (type.includes("ritual")) autoSub = "RITUAL";
+          else autoSub = "EFEITO";
+        }
 
         setNewCard({
           ...newCard,
           name: cardFound.name.toUpperCase(),
           image_url: cardFound.card_images[0].image_url,
-          category: cat,
+          category: autoCat,
+          sub_category: autoSub,
+          is_pendulum: isPendulum,
           edition: isSetCode ? searchTerm.toUpperCase() : (cardFound.card_sets ? cardFound.card_sets[0].set_code.toUpperCase() : '')
         });
-        showToast("Card Localizado!", 'success');
+        showToast("Dados Importados!", 'success');
       } else { alert("Card não encontrado."); }
     } catch (e) { alert("Erro na API."); }
     finally { setIsSearchingAPI(false); }
@@ -150,9 +181,7 @@ export default function AdminPage() {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from('perfis').upsert({ 
-      id: user.id, nome_loja: storeName.toUpperCase(), whatsapp: storeWhatsapp, cidade: storeCity.toUpperCase() 
-    });
+    const { error } = await supabase.from('perfis').upsert({ id: user.id, nome_loja: storeName.toUpperCase(), whatsapp: storeWhatsapp, cidade: storeCity.toUpperCase() });
     if (error) alert(error.message);
     else { showToast("Perfil Atualizado!", 'success'); fetchProfile(user.id); }
     setLoading(false);
@@ -165,7 +194,7 @@ export default function AdminPage() {
     if (error) alert(error.message);
     else { 
       showToast("Publicado!", 'success'); 
-      setNewCard({...newCard, name: '', image_url: '', edition: '', stock: 1, price: 0}); 
+      setNewCard({...newCard, name: '', image_url: '', edition: '', stock: 1, price: 0, is_pendulum: false}); 
       setAvailableImages([]); fetchCartas(user.id); 
     }
   };
@@ -173,6 +202,7 @@ export default function AdminPage() {
   const updateStock = async (id: number, ns: number) => { if (ns < 0) return; await supabase.from('cartas').update({ stock: ns }).eq('id', id); fetchCartas(user.id); };
   const updatePrice = async (id: number, np: number) => { await supabase.from('cartas').update({ price: np }).eq('id', id); fetchCartas(user.id); };
   const updateCondition = async (id: number, nc: string) => { await supabase.from('cartas').update({ condition: nc }).eq('id', id); fetchCartas(user.id); };
+  const updateLang = async (id: number, nl: string) => { await supabase.from('cartas').update({ lang: nl }).eq('id', id); fetchCartas(user.id); };
   const updateCategory = async (id: number, ncat: string) => { await supabase.from('cartas').update({ category: ncat }).eq('id', id); fetchCartas(user.id); };
   const handleDelete = async (id: number) => { if (confirm("Excluir card?")) { await supabase.from('cartas').delete().eq('id', id); fetchCartas(user.id); } };
   const toggleActive = async (id: number, status: boolean) => { await supabase.from('cartas').update({ is_active: !status }).eq('id', id); fetchCartas(user.id); };
@@ -181,13 +211,10 @@ export default function AdminPage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-[#121212] p-4 transition-colors">
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] dark:bg-[#121212] p-4">
         <div className={`bg-white dark:bg-[#1E1E1E] p-8 md:p-10 rounded-sm shadow-2xl w-full transition-all duration-500 ${isRegistering ? 'max-w-2xl' : 'max-w-md'} border border-slate-200 dark:border-white/5`}>
-          <div className="flex justify-center mb-8">
-            <Link href="/"><img src="/logo.svg" alt="Duelo Store" className="h-12 w-auto brightness-0 dark:brightness-100" /></Link>
-          </div>
+          <div className="flex justify-center mb-8"><Link href="/"><img src="/logo.svg" alt="Duelo Store" className="h-12 w-auto brightness-0 dark:brightness-100" /></Link></div>
           <h2 className="text-[10px] font-black mb-8 text-center text-[#CD7F32] uppercase tracking-[0.4em] italic">{isRegistering ? "Criação de Conta Master" : "Acesso Vendedor"}</h2>
-          
           {isRegistering ? (
             <form onSubmit={handleSignUp} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2 relative"><User className="absolute left-3 top-3 text-slate-300" size={14} /><input placeholder="NOME COMPLETO" required className="w-full p-3 pl-10 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 rounded-sm text-xs font-bold dark:text-white outline-[#CD7F32] uppercase" value={regData.nome_completo} onChange={e => setRegData({...regData, nome_completo: e.target.value.toUpperCase()})} /></div>
@@ -251,29 +278,61 @@ export default function AdminPage() {
                 </div>
               )}
               {availableSets.length > 0 && (
-                <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-[#CD7F32]/30 rounded-sm text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.edition} onChange={e => setNewCard({...newCard, edition: e.target.value.toUpperCase()})}>
+                <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-[#CD7F32]/30 rounded-sm text-[10px] font-bold text-[#CD7F32] outline-none uppercase transition-all" value={newCard.edition} onChange={e => setNewCard({...newCard, edition: e.target.value.toUpperCase()})}>
                   {availableSets.map((set, idx) => ( <option key={idx} value={set.set_code}>{set.set_code} - {set.set_name.toUpperCase()}</option> ))}
                 </select>
               )}
               <form onSubmit={handleAddCard} className="space-y-4">
-                <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.condition} onChange={e => setNewCard({...newCard, condition: e.target.value})}>
-                  <option value="M">M (MINT)</option>
-                  <option value="NM">NM (NEAR MINT)</option>
-                  <option value="SP">SP (SLIGHTLY PLAYED)</option>
-                  <option value="MP">MP (MODERATELY PLAYED)</option>
-                  <option value="HP">HP (HEAVILY PLAYED)</option>
-                  <option value="D">D (DAMAGED)</option>
-                </select>
+                
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Categoria</label>
+                      <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.category} onChange={e => setNewCard({...newCard, category: e.target.value})}>
+                        <option value="MONSTRO MAIN">MONSTRO MAIN</option><option value="MONSTRO EXTRA">MONSTRO EXTRA</option><option value="MAGIA">MAGIA</option><option value="ARMADILHA">ARMADILHA</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Sub-Divisão</label>
+                      <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.sub_category} onChange={e => setNewCard({...newCard, sub_category: e.target.value})}>
+                        {newCard.category === 'MAGIA' && <><option value="NORMAL">NORMAL</option><option value="CONTÍNUA">CONTÍNUA</option><option value="EQUIPAMENTO">EQUIPAMENTO</option><option value="QUICK-PLAY">QUICK-PLAY</option><option value="CAMPO">CAMPO</option></>}
+                        {newCard.category === 'ARMADILHA' && <><option value="NORMAL">NORMAL</option><option value="CONTÍNUA">CONTÍNUA</option><option value="COUNTER">COUNTER</option></>}
+                        {newCard.category === 'MONSTRO MAIN' && <><option value="EFEITO">EFEITO</option><option value="NORMAL">NORMAL</option><option value="RITUAL">RITUAL</option></>}
+                        {newCard.category === 'MONSTRO EXTRA' && <><option value="FUSÃO">FUSÃO</option><option value="SINCRO">SINCRO</option><option value="XYZ">XYZ</option><option value="LINK">LINK</option></>}
+                      </select>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Estado</label>
+                      <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.condition} onChange={e => setNewCard({...newCard, condition: e.target.value})}>
+                        <option value="M">M (MINT)</option><option value="NM">NM (NEAR MINT)</option><option value="SP">SP (SLIGHTLY PLAYED)</option><option value="MP">MP (MODERATELY PLAYED)</option><option value="HP">HP (HEAVILY PLAYED)</option><option value="D">D (DAMAGED)</option>
+                      </select>
+                    </div>
+                    {/* SELETOR DE IDIOMA */}
+                    <div className="space-y-1">
+                      <label className="text-[8px] font-black text-slate-400 uppercase">Idioma</label>
+                      <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.lang} onChange={e => setNewCard({...newCard, lang: e.target.value})}>
+                        <option value="PT">PORTUGUÊS (PT)</option>
+                        <option value="EN">INGLÊS (EN)</option>
+                        <option value="JP">JAPONÊS (JP)</option>
+                        <option value="DE">ALEMÃO (DE)</option>
+                        <option value="FR">FRANCÊS (FR)</option>
+                        <option value="IT">ITALIANO (IT)</option>
+                        <option value="ES">ESPANHOL (ES)</option>
+                      </select>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 py-2">
+                   <input type="checkbox" id="pend" className="accent-[#CD7F32]" checked={newCard.is_pendulum} onChange={e => setNewCard({...newCard, is_pendulum: e.target.checked})} />
+                   <label htmlFor="pend" className="text-[10px] font-black text-[#CD7F32] uppercase cursor-pointer">Card Pêndulo?</label>
+                </div>
+
                 <select className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-[10px] font-bold text-[#CD7F32] outline-none uppercase" value={newCard.rarity} onChange={e => setNewCard({...newCard, rarity: e.target.value})}>
-                   <option value="GHOST RARE">GHOST RARE</option>
-                   <option value="QUARTER CENTURY SECRET RARE">QUARTER CENTURY SECRET RARE</option>
-                   <option value="STARLIGHT RARE">STARLIGHT RARE</option>
-                   <option value="COLLECTOR'S RARE">COLLECTOR'S RARE</option>
-                   <option value="ULTIMATE RARE">ULTIMATE RARE</option>
-                   <option value="SECRET RARE">SECRET RARE</option>
-                   <option value="ULTRA RARE">ULTRA RARE</option>
-                   <option value="COMMON">COMMON</option>
+                   <option value="GHOST RARE">GHOST RARE</option><option value="QUARTER CENTURY SECRET RARE">QUARTER CENTURY SECRET RARE</option><option value="STARLIGHT RARE">STARLIGHT RARE</option><option value="COLLECTOR'S RARE">COLLECTOR'S RARE</option><option value="ULTIMATE RARE">ULTIMATE RARE</option><option value="SECRET RARE">SECRET RARE</option><option value="ULTRA RARE">ULTRA RARE</option><option value="COMMON">COMMON</option>
                 </select>
+
                 <div className="grid grid-cols-2 gap-2">
                    <input type="number" step="0.01" placeholder="PREÇO" className="p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-xs font-bold text-[#CD7F32]" value={newCard.price || ''} onChange={e => setNewCard({...newCard, price: parseFloat(e.target.value)})} />
                    <input type="number" placeholder="QTD" className="p-3 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/5 text-xs font-bold text-[#CD7F32]" value={newCard.stock} onChange={e => setNewCard({...newCard, stock: parseInt(e.target.value)})} />
@@ -286,21 +345,31 @@ export default function AdminPage() {
 
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-[#1E1E1E] rounded-sm border border-slate-200 dark:border-white/5 shadow-2xl overflow-hidden transition-colors">
-            <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/10"><h2 className="font-black text-[10px] tracking-[0.3em] text-[#CD7F32] uppercase"><Package size={16} className="inline mr-2"/> Meu Estoque</h2></div>
+            <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/10"><h2 className="font-black text-[10px] tracking-[0.3em] text-[#CD7F32] uppercase flex items-center gap-3"><Package size={16} className="inline mr-2"/> Meu Estoque</h2></div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead><tr className="text-[8px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-white/5"><th className="p-6">Card</th><th className="p-6">Estado</th><th className="p-6">Estoque</th><th className="p-6">Preço</th><th className="p-6 text-right">Ações</th></tr></thead>
+                <thead><tr className="text-[8px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em] border-b border-slate-100 dark:border-white/5"><th className="p-6">Card</th><th className="p-6">Estado | Idioma</th><th className="p-6">Estoque</th><th className="p-6">Preço</th><th className="p-6 text-right">Ações</th></tr></thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                   {cartas.map(item => (
                     <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
                       <td className="p-6 flex items-center gap-4">
                         <div className="w-10 h-14 bg-slate-100 dark:bg-black/40 p-1 rounded-sm shrink-0 flex items-center justify-center">{item.image_url ? <img src={item.image_url} className="w-full h-full object-contain" /> : <ImageIcon size={16} className="text-slate-300" />}</div>
-                        <div className="flex flex-col"><span className="font-bold text-xs uppercase dark:text-gray-100 truncate max-w-[120px]">{item.name}</span><span className="text-[9px] text-[#CD7F32] font-black uppercase tracking-tighter">{item.edition}</span></div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-xs uppercase dark:text-gray-200 truncate max-w-[120px]">{item.name}</span>
+                          <span className="text-[9px] text-[#CD7F32] font-black uppercase tracking-tighter">{item.edition}</span>
+                        </div>
                       </td>
                       <td className="p-6">
-                        <select defaultValue={item.condition} onChange={(e) => updateCondition(item.id, e.target.value)} className="bg-transparent text-[10px] font-black text-[#CD7F32] uppercase outline-none cursor-pointer">
-                          <option value="M">M</option><option value="NM">NM</option><option value="SP">SP</option><option value="MP">MP</option><option value="HP">HP</option><option value="D">D</option>
-                        </select>
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                             {/* Edição rápida de Estado */}
+                             <select defaultValue={item.condition} onChange={(e) => updateCondition(item.id, e.target.value)} className="bg-transparent text-[10px] font-black text-[#CD7F32] uppercase outline-none cursor-pointer"><option value="M">M</option><option value="NM">NM</option><option value="SP">SP</option><option value="MP">MP</option></select>
+                             <span className="text-slate-300">|</span>
+                             {/* Edição rápida de Idioma */}
+                             <select defaultValue={item.lang} onChange={(e) => updateLang(item.id, e.target.value)} className="bg-transparent text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase outline-none cursor-pointer"><option value="PT">PT</option><option value="EN">EN</option><option value="JP">JP</option></select>
+                          </div>
+                          <select defaultValue={item.category} onChange={(e) => updateCategory(item.id, e.target.value)} className="bg-transparent text-[8px] font-bold text-slate-400 uppercase outline-none">{['MONSTRO MAIN', 'MONSTRO EXTRA', 'MAGIA', 'ARMADILHA'].map(c => <option key={c} value={c}>{c}</option>)}</select>
+                        </div>
                       </td>
                       <td className="p-6"><div className="flex items-center gap-3"><button onClick={() => updateStock(item.id, item.stock - 1)} className="text-slate-400 dark:text-white/20 hover:text-[#CD7F32]"><Minus size={14}/></button><span className="text-xs font-black min-w-[12px] text-center dark:text-white">{item.stock}</span><button onClick={() => updateStock(item.id, item.stock + 1)} className="text-[#CD7F32] hover:text-black dark:hover:text-white"><Plus size={14}/></button></div></td>
                       <td className="p-6"><input type="number" step="0.01" defaultValue={item.price} onBlur={(e) => updatePrice(item.id, parseFloat(e.target.value))} className="w-20 bg-transparent border-b border-transparent focus:border-[#CD7F32] text-xs font-black text-[#CD7F32] outline-none" /></td>
